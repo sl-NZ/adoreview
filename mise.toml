@@ -1,0 +1,14 @@
+[tools]
+bun = "1.3"
+
+[tasks.dev]
+description = "Run the review server with reload (http://localhost:4680)"
+run = "bun --watch server.ts"
+
+[tasks.serve]
+description = "Run the review server (http://localhost:4680)"
+run = "bun server.ts"
+
+[tasks.test]
+description = "Run the test suite"
+run = "bun test"

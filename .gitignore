@@ -1,0 +1,7 @@
+node_modules/
+ui/dist/
+data.db
+.env
+.env.local
+.env.*.local
+.DS_Store

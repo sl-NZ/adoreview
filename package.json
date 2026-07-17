@@ -1,0 +1,18 @@
+{
+  "name": "adoreview",
+  "version": "0.1.0",
+  "description": "Fast, keyboard-first, local pull-request review tool for Azure DevOps.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch server.ts",
+    "start": "bun server.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@pierre/diffs": "^1.2.12",
+    "material-icon-theme": "^5.36.1",
+    "shiki": "^4.3.1"
+  }
+}

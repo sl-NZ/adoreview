@@ -1,0 +1,227 @@
+/* adoreview spike — dark, compact, keyboard-first */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --panel: #161b22; --panel2: #1c2129; --border: #30363d;
+  --text: #e6edf3; --dim: #8b949e; --accent: #58a6ff;
+  --green: #3fb950; --red: #f85149; --amber: #d29922;
+  --add-bg: rgba(63,185,80,.09); --del-bg: rgba(248,81,73,.11);
+  --add-chg: rgba(46,160,67,.42); --del-chg: rgba(248,81,73,.42);
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  /* @pierre/diffs reads these through the shadow boundary */
+  --diffs-font-family: var(--mono);
+  --diffs-font-size: 12.5px;
+  --diffs-font-features: "calt" 1, "liga" 1;
+}
+html { background: var(--bg); }
+body { font: 13px/1.45 var(--sans); color: var(--text); }
+.boot { padding: 3rem; color: var(--dim); font-family: var(--mono); }
+
+#banner { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding: .5rem 1rem;
+  background: #3d1418; color: #ffb3ad; border-bottom: 1px solid var(--red); font-family: var(--mono); font-size: 12px; }
+/* live-refresh notice (not an error): neutral/positive + clickable */
+#banner.update { background: #10261b; color: #7ee787; border-bottom-color: var(--green); cursor: pointer; }
+
+/* ── topbar ─────────────────────────────── */
+.topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: .75rem;
+  padding: .55rem 1rem; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.topbar .logo { font-weight: 700; letter-spacing: -.02em; }
+.topbar .logo em { color: var(--dim); font-style: normal; font-weight: 600; opacity: .6; }
+.topbar .spacer { flex: 1; }
+.topbar input { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); padding: .3rem .6rem; width: 260px; font: 12px var(--mono); outline: none; }
+.topbar input:focus { border-color: var(--accent); }
+.hint { color: var(--dim); font-size: 11px; font-family: var(--mono); }
+kbd { font: 10.5px var(--mono); background: var(--panel2); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 4px; padding: 0 .35em; color: var(--dim); }
+
+/* ── inbox ─────────────────────────────── */
+.inbox { max-width: 1080px; margin: 0 auto; padding: 1rem 1rem 4rem; }
+.section-h { margin: 1.1rem 0 .4rem; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--dim); }
+.section-h b { color: var(--text); }
+.rows { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.row { display: flex; align-items: center; gap: .6rem; padding: .5rem .75rem;
+  border-bottom: 1px solid var(--border); cursor: pointer; }
+.row:last-child { border-bottom: 0; }
+.row.sel { background: var(--panel2); box-shadow: inset 3px 0 0 var(--accent); }
+.row .dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; flex: none; }
+.row .dot.ready { background: var(--accent); }
+.row .chip { flex: none; font: 10.5px var(--mono); color: var(--dim); background: var(--panel2);
+  border: 1px solid var(--border); padding: .1rem .45rem; border-radius: 10px; max-width: 200px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .id { flex: none; font: 11px var(--mono); color: var(--dim); }
+.row .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .meta { flex: none; color: var(--dim); font-size: 11.5px; }
+.row .votes { flex: none; font: 11px var(--mono); }
+.row.nolocal { opacity: .45; }
+.tag { font: 10px var(--mono); border: 1px solid var(--border); color: var(--dim);
+  border-radius: 4px; padding: 0 .3em; }
+.tag.draft { color: var(--amber); border-color: var(--amber); }
+.v-approve { color: var(--green); } .v-reject { color: var(--red); } .v-wait { color: var(--amber); } .v-none { color: var(--dim); }
+.empty { color: var(--dim); padding: 2rem; text-align: center; }
+
+/* ── PR view ─────────────────────────────── */
+.prhead { padding: .7rem 1rem .6rem; border-bottom: 1px solid var(--border); background: var(--panel); }
+.prhead .t1 { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.prhead h1 { font-size: 15.5px; font-weight: 600; }
+.prhead .t2 { display: flex; align-items: center; gap: .8rem; margin-top: .3rem;
+  color: var(--dim); font-size: 11.5px; flex-wrap: wrap; }
+.branch { font: 11px var(--mono); background: var(--panel2); border-radius: 4px; padding: .05rem .4rem; color: var(--accent); }
+.reviewer { display: inline-flex; align-items: center; gap: .3rem; }
+.desc { margin-top: .45rem; color: var(--dim); font-size: 12px; white-space: pre-wrap;
+  max-height: 2.7em; overflow: hidden; cursor: pointer; }
+.desc.open { max-height: none; }
+.prbody { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 0; }
+/* CodeView mode: the diff pane owns scrolling (app-like flowing document) */
+.prbody.fixed { overflow: hidden; }
+.prbody.fixed .sidebar { position: static; height: 100%; }
+.prbody.fixed .main { height: 100%; overflow: hidden; padding: 0 .4rem 0 .9rem; }
+/* the CodeView ROOT is the scroll container (the lib listens for scroll on it) */
+.cvroot { height: 100%; position: relative; overflow-y: auto; overscroll-behavior: contain; }
+.cvroot:focus { outline: none; }
+/* file surfaces: the <diffs-container> host is light DOM — give each file a
+   subtle card so collapsed rows read as rows (the shadow's own code background
+   paints over this inside, leaving the header slightly lighter) */
+.cvroot diffs-container { background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; }
+.cvroot diffs-container[data-collapsed] { cursor: pointer; }
+.cvroot diffs-container[data-collapsed]:hover { background: var(--panel2); border-color: #3d444d; }
+.hmeta { display: inline-flex; align-items: center; gap: .5rem; margin-left: .6rem; }
+.sidebar { position: sticky; top: 45px; align-self: start; height: calc(100vh - 45px);
+  overflow-y: auto; border-right: 1px solid var(--border); padding: .5rem 0; }
+.sfile { display: flex; align-items: center; gap: .5rem; padding: .45rem .8rem; cursor: pointer;
+  font: 11.5px var(--mono); color: var(--dim); }
+.sfile:hover { color: var(--text); }
+.sfile.active { color: var(--text); background: var(--panel2); box-shadow: inset 2px 0 0 var(--accent); }
+.sfile .ficon { min-width: 24px; height: 14px; font-size: 8px; padding: 0 3px; }
+.sfile .ficon.has-img { min-width: 16px; padding: 0; }
+.sfile .fimg { width: 14px; height: 14px; }
+.tab kbd { margin-left: .45em; font-size: 9px; padding: 0 .3em; }
+.sfile .sstate { flex: none; width: 1em; text-align: center; font-size: 10px; }
+.sfile .fn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--sans); font-size: 12.5px; }
+.sfile .fn b { font-weight: 600; }
+.sfile .fn .dir { color: var(--dim); opacity: .75; margin-left: .45em; font-size: 10.5px; }
+.sidebar .sfilter { display: block; margin: .3rem .75rem .55rem; width: calc(100% - 1.5rem);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+  padding: .3rem .6rem; font: 12px var(--sans); outline: none; }
+.sidebar .sfilter:focus { border-color: var(--accent); }
+.sfile .st { flex: none; width: 1em; text-align: center; font-weight: 700; }
+.st-add { color: var(--green); } .st-delete { color: var(--red); } .st-rename { color: var(--accent); } .st-edit { color: var(--amber); }
+.sfile .n { flex: none; font-size: 10.5px; }
+.main { padding: .8rem 1rem 6rem; min-width: 0; }
+
+/* no overflow:hidden here — it would break position:sticky on .fhead */
+.fcard { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 1.35rem;
+  background: var(--panel); scroll-margin-top: 54px; }
+.fhead { border-radius: 9px 9px 0 0; }
+.fbody { overflow: hidden; border-radius: 0 0 9px 9px; }
+.main { padding: 1.1rem 1.4rem 6rem; }
+.fhead { display: flex; align-items: center; gap: .6rem; padding: .6rem .95rem;
+  background: var(--panel2); border-bottom: 1px solid var(--border); position: sticky; top: 45px; z-index: 5;
+  font: 12px var(--mono); cursor: pointer; }
+.fhead .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fhead .path b { color: var(--text); font-weight: 600; font-size: 12.5px; }
+.fhead .path .dir { color: var(--dim); margin-left: .55em; font-size: 10.5px; }
+.revcb { flex: none; width: 15px; height: 15px; margin-left: .35rem; border: 1.5px solid var(--border);
+  border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; color: transparent; cursor: pointer; }
+.revcb:hover { border-color: var(--green); }
+.revcb.on { background: var(--green); border-color: var(--green); color: #04140a; }
+.fcard.reviewed { opacity: .5; }
+.fcard.reviewed:hover { opacity: .85; }
+.fhead .stats { flex: none; font-size: 11px; }
+.fhead .stats .a { color: var(--green); } .fhead .stats .d { color: var(--red); margin-left: .4em; }
+.fbody { font: 12.5px/1.75 var(--mono); tab-size: 4; padding: .35rem 0 .5rem; }
+.fbody .pending { padding: 1rem; color: var(--dim); }
+.hunkh { padding: .55rem 1rem .1rem 4.6em; color: var(--dim); opacity: .75; font-size: 10.5px;
+  border-top: 1px dashed var(--border); margin-top: .45rem; }
+.dl { display: flex; min-height: 24px; }
+.dl:hover { filter: brightness(1.14); }
+.dl .g { flex: none; width: 3.4em; padding-right: 1.1em; text-align: right; color: var(--dim);
+  user-select: none; font-size: 11px; line-height: 24px; opacity: .65; }
+.dl .tx { flex: 1; white-space: pre-wrap; word-break: break-all; padding: 1px 1.2rem 1px 0; }
+.dl.add { background: var(--add-bg); } .dl.add .g { color: var(--green); opacity: .9; }
+.dl.del { background: var(--del-bg); } .dl.del .g { color: var(--red); opacity: .9; }
+.dl.add .tx .chg { background: var(--add-chg); border-radius: 2px; }
+.dl.del .tx .chg { background: var(--del-chg); border-radius: 2px; }
+/* "smart layout": purely added/deleted files render as one calm block */
+.fbody.blk-add { box-shadow: inset 2px 0 0 var(--green); background: rgba(46,160,67,.05); }
+.fbody.blk-del { box-shadow: inset 2px 0 0 var(--red); background: rgba(248,81,73,.05); }
+.dl.blk .g { width: 3.6em; }
+.binary, .footnote { padding: .6rem .75rem; color: var(--dim); font-size: 11.5px; }
+
+/* thread cards, composer, reply box, 💬 buttons, and .md styles live in
+   ANNOTATION_CSS inside app.js — they must also work INSIDE the shadow root
+   of @pierre/diffs' <diffs-container>, so app.js injects them both places */
+
+.scopeline { color: var(--dim); font-size: 11.5px; margin: .9rem 0 -.3rem; }
+.scopetoggle { cursor: pointer; }
+.scopetoggle:hover { color: var(--accent); }
+
+/* thread card internals: see ANNOTATION_CSS in app.js */
+.prlevel { margin: .7rem 1rem; }
+.prlevel .thread { margin: 0 0 .6rem; }
+
+/* ── tabs (Overview | Diff) ─────────────── */
+.tabs { display: inline-flex; gap: .25rem; margin-left: .35rem; }
+.tab { padding: .16rem .7rem; border-radius: 14px; font-size: 12px; color: var(--dim);
+  cursor: pointer; border: 1px solid transparent; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); background: var(--panel2); border-color: var(--border); }
+
+/* ── overview page ─────────────── */
+.ovwrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.8rem;
+  max-width: 1180px; margin: 0 auto; padding: 1.5rem 1.2rem 5rem; }
+.ovtitle { font-size: 22px; font-weight: 700; letter-spacing: -.015em; margin-bottom: .55rem; }
+.ovby { display: flex; align-items: center; gap: .8rem; color: var(--dim); font-size: 12px;
+  margin-bottom: .8rem; flex-wrap: wrap; }
+.ovh { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim);
+  margin: 1.5rem 0 .55rem; }
+.ovevent { display: flex; align-items: baseline; gap: .6rem; padding: .26rem 0; font-size: 12.5px; }
+.ovevent .dot2 { width: 7px; height: 7px; border-radius: 50%; background: var(--border);
+  flex: none; align-self: center; }
+.ovevent .t { color: var(--text); min-width: 0; }
+.ovevent .when { color: var(--dim); font-size: 11px; flex: none; }
+.ovmain .thread { margin: 0 0 .6rem; max-width: none; }
+.ovside .scard { border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+  padding: .65rem .85rem; margin-bottom: .9rem; }
+.scard .sh { font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .07em;
+  margin-bottom: .45rem; }
+.scard .srow { display: flex; align-items: center; gap: .5rem; padding: .22rem 0;
+  font-size: 12.5px; min-width: 0; }
+.srow .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow.link { cursor: pointer; }
+.srow.link:hover .t { color: var(--accent); }
+.srow .id { font: 11px var(--mono); color: var(--dim); flex: none; }
+.srow.dim { color: var(--dim); }
+.fn2 b { font-weight: 600; }
+.fn2 .dir { color: var(--dim); font-size: 10px; }
+
+/* markdown (.md) styles: see ANNOTATION_CSS in app.js */
+
+/* HUD + help */
+#hud { position: fixed; right: .8rem; bottom: .8rem; z-index: 40; font: 10.5px var(--mono);
+  color: var(--dim); background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--border); border-radius: 8px; padding: .35rem .6rem; pointer-events: none; }
+#hud b { color: var(--accent); font-weight: 600; }
+#help { position: fixed; inset: 0; z-index: 60; background: rgba(1,4,9,.7); display: flex;
+  align-items: center; justify-content: center; }
+#help[hidden], #banner[hidden], #hud[hidden] { display: none; }
+#help .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  width: min(880px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto;
+  padding: 1rem 1.2rem 1.2rem; box-shadow: 0 20px 60px rgba(0,0,0,.45); outline: none; }
+.helphead { display: flex; align-items: center; justify-content: space-between; margin-bottom: .9rem; }
+.helphead strong { font-size: 13px; }
+.helphead button { width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--dim); font: 18px/1 var(--sans); cursor: pointer; }
+.helphead button:hover, .helphead button:focus-visible { color: var(--text); background: var(--panel2);
+  border-color: var(--border); outline: none; }
+.helpcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem 2rem; }
+#help h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin-bottom: .5rem; }
+#help table td { padding: .12rem .5rem .12rem 0; font-size: 12px; color: var(--dim); }
+#help td:first-child { text-align: right; }
+.flash-line { animation: flashbg 1.2s ease-out; }
+@keyframes flashbg { 0% { background: rgba(88,166,255,.25); } 100% { background: transparent; } }
